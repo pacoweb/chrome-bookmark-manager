@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookmarks Utilities - Gestión avanzada de marcadores para Chrome</title>
+  <meta name="description" content="Extensión Chrome para gestión avanzada de marcadores: búsqueda inteligente, agrupación por dominio, detección de enlaces muertos, estadísticas y más.">
+  <meta property="og:title" content="Bookmarks Utilities">
+  <meta property="og:description" content="Gestión avanzada de marcadores para Chrome con búsqueda inteligente, agrupación por dominio y detección de enlaces muertos.">
+  <meta property="og:type" content="website">
+  <style>
+    /* ===== Custom Properties ===== */
+    :root {
+      --color-bg: #ffffff;
+      --color-bg-alt: #f8f9fa;
+      --color-text: #1a1a2e;
+      --color-text-muted: #555555;
+      --color-primary: #1a73e8;
+      --color-primary-hover: #1557b0;
+      --color-border: #e0e0e0;
+      --color-card-bg: #ffffff;
+      --color-card-shadow: rgba(0, 0, 0, 0.08);
+      --color-accent: #fef7e0;
+      --color-accent-border: #f4c7c3;
+      --max-width: 900px;
+      --radius: 10px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #1a1a2e;
+        --color-bg-alt: #16213e;
+        --color-text: #e0e0e0;
+        --color-text-muted: #a0a0a0;
+        --color-primary: #4a9eff;
+        --color-primary-hover: #1a73e8;
+        --color-border: #2a2a4a;
+        --color-card-bg: #16213e;
+        --color-card-shadow: rgba(0, 0, 0, 0.3);
+        --color-accent: #2a2a1a;
+        --color-accent-border: #3a2a2a;
+      }
+    }
+
+    /* Force dark mode when data-theme="dark" */
+    [data-theme="dark"] {
+      --color-bg: #1a1a2e;
+      --color-bg-alt: #16213e;
+      --color-text: #e0e0e0;
+      --color-text-muted: #a0a0a0;
+      --color-primary: #4a9eff;
+      --color-primary-hover: #1a73e8;
+      --color-border: #2a2a4a;
+      --color-card-bg: #16213e;
+      --color-card-shadow: rgba(0, 0, 0, 0.3);
+      --color-accent: #2a2a1a;
+      --color-accent-border: #3a2a2a;
+    }
+
+    /* Force light mode when data-theme="light" */
+    [data-theme="light"] {
+      --color-bg: #ffffff;
+      --color-bg-alt: #f8f9fa;
+      --color-text: #1a1a2e;
+      --color-text-muted: #555555;
+      --color-primary: #1a73e8;
+      --color-primary-hover: #1557b0;
+      --color-border: #e0e0e0;
+      --color-card-bg: #ffffff;
+      --color-card-shadow: rgba(0, 0, 0, 0.08);
+      --color-accent: #fef7e0;
+      --color-accent-border: #f4c7c3;
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== Layout ===== */
+    .container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ===== Header ===== */
+    header {
+      background: var(--color-bg-alt);
+      border-bottom: 1px solid var(--color-border);
+      padding: 20px 0;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-title h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .header-title p {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .header-controls button {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--color-text);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .header-controls button:hover {
+      border-color: var(--color-primary);
+    }
+
+    .header-controls button:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+      text-align: center;
+      padding: 60px 20px 40px;
+    }
+
+    .hero h2 {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--color-text-muted);
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+
+    .btn-install {
+      display: inline-block;
+      background: var(--color-primary);
+      color: #ffffff !important;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-decoration: none !important;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-install:hover {
+      background: var(--color-primary-hover);
+      transform: translateY(-1px);
+      text-decoration: none !important;
+    }
+
+    .btn-install:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    /* ===== Sections ===== */
+    section {
+      padding: 40px 0;
+    }
+
+    section h2 {
+      font-size: 1.6rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    /* ===== Features Grid ===== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 2px 8px var(--color-card-shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px var(--color-card-shadow);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+    }
+
+    /* ===== Screenshots ===== */
+    .screenshots {
+      background: var(--color-bg-alt);
+    }
+
+    .screenshots-placeholder {
+      text-align: center;
+      padding: 40px 20px;
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius);
+      color: var(--color-text-muted);
+    }
+
+    .screenshots-placeholder p {
+      margin-bottom: 8px;
+    }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .screenshot-item {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 8px var(--color-card-shadow);
+    }
+
+    .screenshot-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .screenshot-caption {
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+    }
+
+    /* ===== Changelog ===== */
+    .changelog-list {
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .changelog-version {
+      margin-bottom: 24px;
+    }
+
+    .changelog-version h3 {
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+      color: var(--color-primary);
+    }
+
+    .changelog-version .date {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      margin-bottom: 8px;
+    }
+
+    .changelog-version ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .changelog-version li {
+      padding: 4px 0;
+      font-size: 0.95rem;
+      color: var(--color-text-muted);
+    }
+
+    .changelog-version li::before {
+      content: '• ';
+      color: var(--color-primary);
+      font-weight: bold;
+    }
+
+    /* ===== Warning box ===== */
+    .warning-box {
+      background: var(--color-accent);
+      border: 1px solid var(--color-accent-border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin: 20px auto;
+      max-width: 650px;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      background: var(--color-bg-alt);
+      border-top: 1px solid var(--color-border);
+      padding: 24px 0;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+    }
+
+    footer a {
+      color: var(--color-primary);
+    }
+
+    footer p + p {
+      margin-top: 6px;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 600px) {
+      .hero h2 {
+        font-size: 1.6rem;
+      }
+
+      .hero p {
+        font-size: 1rem;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container header-inner">
+      <div class="header-title">
+        <h1>🔖 Bookmarks Utilities</h1>
+        <p data-i18n="header.tagline">Gestión avanzada de marcadores para Chrome</p>
+      </div>
+      <div class="header-controls">
+        <button id="lang-toggle" aria-label="Cambiar idioma">EN</button>
+        <button id="theme-toggle" aria-label="Cambiar tema">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h2 data-i18n="hero.title">Control total de tus marcadores</h2>
+      <p data-i18n="hero.description">Busca, organiza, detecta enlaces rotos y analiza tus marcadores con una extensión ligera y accesible.</p>
+      <!-- TODO: Replace # with your Chrome Web Store URL -->
+      <a href="#" class="btn-install" data-i18n="hero.install">Instalar en Chrome</a>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container">
+      <h2 data-i18n="features.title">Características</h2>
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <h3 data-i18n="features.search.title">Búsqueda inteligente</h3>
+          <p data-i18n="features.search.description">Busca por título o URL con un mínimo de 3 caracteres. Resultados instantáneos.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📂</div>
+          <h3 data-i18n="features.grouping.title">Agrupación por dominio</h3>
+          <p data-i18n="features.grouping.description">Organiza automáticamente tus marcadores por dominio para una navegación más rápida.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">💀</div>
+          <h3 data-i18n="features.deadlinks.title">Detección de enlaces muertos</h3>
+          <p data-i18n="features.deadlinks.description">Verifica la salud de tus marcadores y elimina los enlaces que ya no funcionan.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 data-i18n="features.stats.title">Estadísticas detalladas</h3>
+          <p data-i18n="features.stats.description">Visualiza totales, dominios únicos, últimos añadidos y últimos usados.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3 data-i18n="features.lang.title">Multiidioma</h3>
+          <p data-i18n="features.lang.description">Interfaz disponible en español e inglés. Cambia el idioma desde la configuración.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">♿</div>
+          <h3 data-i18n="features.a11y.title">Accesibilidad ARIA</h3>
+          <p data-i18n="features.a11y.description">Navegación por teclado completa, roles ARIA y soporte para lectores de pantalla.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3 data-i18n="features.backup.title">Copia de seguridad</h3>
+          <p data-i18n="features.backup.description">Antes de eliminar enlaces rotos, se guarda un backup. Recupéralo desde la configuración.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚙️</div>
+          <h3 data-i18n="features.settings.title">Configuración</h3>
+          <p data-i18n="features.settings.description">Elige el idioma y el modo de apertura: popup o panel lateral.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section id="screenshots" class="screenshots">
+    <div class="container">
+      <h2 data-i18n="screenshots.title">Capturas de pantalla</h2>
+      <div class="screenshots-placeholder">
+        <p>📸</p>
+        <p data-i18n="screenshots.placeholder">Capturas de pantalla próximamente.</p>
+        <p style="font-size: 0.85rem;" data-i18n="screenshots.hint">Añade imágenes en la carpeta <code>docs/screenshots/</code> y actualiza esta sección.</p>
+      </div>
+      <!-- Add screenshots here:
+      <div class="screenshots-grid">
+        <div class="screenshot-item">
+          <img src="screenshots/search.png" alt="Búsqueda de marcadores">
+          <div class="screenshot-caption">Búsqueda inteligente</div>
+        </div>
+        <div class="screenshot-item">
+          <img src="screenshots/deadlinks.png" alt="Detección de enlaces muertos">
+          <div class="screenshot-caption">Enlaces muertos</div>
+        </div>
+      </div>
+      -->
+    </div>
+  </section>
+
+  <!-- Changelog -->
+  <section id="changelog">
+    <div class="container">
+      <h2 data-i18n="changelog.title">Registro de cambios</h2>
+      <div class="changelog-list">
+
+        <div class="changelog-version">
+          <h3>v1.2.0</h3>
+          <div class="date">16 de noviembre de 2026</div>
+          <ul>
+            <li data-i18n="changelog.v120.rename">Renombrado a <strong>Bookmarks Utilities</strong></li>
+            <li data-i18n="changelog.v120.a11y">Accesibilidad ARIA completa</li>
+            <li data-i18n="changelog.v120.keyboard">Navegación por teclado en pestañas y marcadores</li>
+            <li data-i18n="changelog.v120.search">Búsqueda con mínimo de 3 caracteres</li>
+            <li data-i18n="changelog.v120.collapsible">Secciones colapsables en Estadísticas</li>
+            <li data-i18n="changelog.v120.settings">Página de Configuración con idioma y modo de apertura</li>
+            <li data-i18n="changelog.v120.backup">Recuperación de backups desde la configuración</li>
+            <li data-i18n="changelog.v120.warning">Advertencia sobre falsos positivos en Enlaces Muertos</li>
+          </ul>
+        </div>
+
+        <div class="changelog-version">
+          <h3>v1.1.0</h3>
+          <div class="date">12 de noviembre de 2026</div>
+          <ul>
+            <li data-i18n="changelog.v110.i18n">Soporte de internacionalización (ES/EN)</li>
+            <li data-i18n="changelog.v110.delete">Botón de eliminación compacto en resultados</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Warning -->
+  <section>
+    <div class="container">
+      <div class="warning-box">
+        ⚠️ <span data-i18n="warning.text">Algunos enlaces válidos pueden marcarse como rotos por restricciones de acceso, CAPTCHAs o errores temporales.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <!-- TODO: Replace # with your GitHub repository URL -->
+      <p><a href="#" data-i18n="footer.github">Ver código en GitHub</a></p>
+      <p data-i18n="footer.license">Licenciado bajo MIT · Bookmarks Utilities © 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    // ===== Translations =====
+    const translations = {
+      es: {
+        'header.tagline': 'Gestión avanzada de marcadores para Chrome',
+        'hero.title': 'Control total de tus marcadores',
+        'hero.description': 'Busca, organiza, detecta enlaces rotos y analiza tus marcadores con una extensión ligera y accesible.',
+        'hero.install': 'Instalar en Chrome',
+        'features.title': 'Características',
+        'features.search.title': 'Búsqueda inteligente',
+        'features.search.description': 'Busca por título o URL con un mínimo de 3 caracteres. Resultados instantáneos.',
+        'features.grouping.title': 'Agrupación por dominio',
+        'features.grouping.description': 'Organiza automáticamente tus marcadores por dominio para una navegación más rápida.',
+        'features.deadlinks.title': 'Detección de enlaces muertos',
+        'features.deadlinks.description': 'Verifica la salud de tus marcadores y elimina los enlaces que ya no funcionan.',
+        'features.stats.title': 'Estadísticas detalladas',
+        'features.stats.description': 'Visualiza totales, dominios únicos, últimos añadidos y últimos usados.',
+        'features.lang.title': 'Multiidioma',
+        'features.lang.description': 'Interfaz disponible en español e inglés. Cambia el idioma desde la configuración.',
+        'features.a11y.title': 'Accesibilidad ARIA',
+        'features.a11y.description': 'Navegación por teclado completa, roles ARIA y soporte para lectores de pantalla.',
+        'features.backup.title': 'Copia de seguridad',
+        'features.backup.description': 'Antes de eliminar enlaces rotos, se guarda un backup. Recupéralo desde la configuración.',
+        'features.settings.title': 'Configuración',
+        'features.settings.description': 'Elige el idioma y el modo de apertura: popup o panel lateral.',
+        'screenshots.title': 'Capturas de pantalla',
+        'screenshots.placeholder': 'Capturas de pantalla próximamente.',
+        'screenshots.hint': 'Añade imágenes en la carpeta docs/screenshots/ y actualiza esta sección.',
+        'changelog.title': 'Registro de cambios',
+        'changelog.v120.rename': 'Renombrado a <strong>Bookmarks Utilities</strong>',
+        'changelog.v120.a11y': 'Accesibilidad ARIA completa',
+        'changelog.v120.keyboard': 'Navegación por teclado en pestañas y marcadores',
+        'changelog.v120.search': 'Búsqueda con mínimo de 3 caracteres',
+        'changelog.v120.collapsible': 'Secciones colapsables en Estadísticas',
+        'changelog.v120.settings': 'Página de Configuración con idioma y modo de apertura',
+        'changelog.v120.backup': 'Recuperación de backups desde la configuración',
+        'changelog.v120.warning': 'Advertencia sobre falsos positivos en Enlaces Muertos',
+        'changelog.v110.i18n': 'Soporte de internacionalización (ES/EN)',
+        'changelog.v110.delete': 'Botón de eliminación compacto en resultados',
+        'warning.text': 'Algunos enlaces válidos pueden marcarse como rotos por restricciones de acceso, CAPTCHAs o errores temporales.',
+        'footer.github': 'Ver código en GitHub',
+        'footer.license': 'Licenciado bajo MIT · Bookmarks Utilities © 2026'
+      },
+      en: {
+        'header.tagline': 'Advanced bookmark management for Chrome',
+        'hero.title': 'Total control of your bookmarks',
+        'hero.description': 'Search, organize, detect broken links and analyze your bookmarks with a lightweight and accessible extension.',
+        'hero.install': 'Install on Chrome',
+        'features.title': 'Features',
+        'features.search.title': 'Smart Search',
+        'features.search.description': 'Search by title or URL with a minimum of 3 characters. Instant results.',
+        'features.grouping.title': 'Domain Grouping',
+        'features.grouping.description': 'Automatically organize your bookmarks by domain for faster navigation.',
+        'features.deadlinks.title': 'Dead Link Detection',
+        'features.deadlinks.description': 'Check the health of your bookmarks and remove links that no longer work.',
+        'features.stats.title': 'Detailed Statistics',
+        'features.stats.description': 'View totals, unique domains, recently added and recently used bookmarks.',
+        'features.lang.title': 'Multi-language',
+        'features.lang.description': 'Interface available in Spanish and English. Change language from settings.',
+        'features.a11y.title': 'ARIA Accessibility',
+        'features.a11y.description': 'Full keyboard navigation, ARIA roles and screen reader support.',
+        'features.backup.title': 'Backup & Recovery',
+        'features.backup.description': 'Before deleting broken links, a backup is saved. Restore it from settings.',
+        'features.settings.title': 'Settings',
+        'features.settings.description': 'Choose language and open mode: popup or side panel.',
+        'screenshots.title': 'Screenshots',
+        'screenshots.placeholder': 'Screenshots coming soon.',
+        'screenshots.hint': 'Add images in the docs/screenshots/ folder and update this section.',
+        'changelog.title': 'Changelog',
+        'changelog.v120.rename': 'Renamed to <strong>Bookmarks Utilities</strong>',
+        'changelog.v120.a11y': 'Full ARIA accessibility',
+        'changelog.v120.keyboard': 'Keyboard navigation in tabs and bookmarks',
+        'changelog.v120.search': 'Search with minimum 3 characters',
+        'changelog.v120.collapsible': 'Collapsible sections in Statistics',
+        'changelog.v120.settings': 'Settings page with language and open mode',
+        'changelog.v120.backup': 'Backup recovery from settings',
+        'changelog.v120.warning': 'Warning about false positives in Dead Links',
+        'changelog.v110.i18n': 'Internationalization support (ES/EN)',
+        'changelog.v110.delete': 'Compact delete button in results',
+        'warning.text': 'Some valid links may be marked as broken due to access restrictions, CAPTCHAs or temporary errors.',
+        'footer.github': 'View code on GitHub',
+        'footer.license': 'Licensed under MIT · Bookmarks Utilities © 2026'
+      }
+    };
+
+    let currentLang = localStorage.getItem('bookmarks-utils-lang') || 'es';
+
+    function applyTranslations() {
+      const t = translations[currentLang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+          el.innerHTML = t[key];
+        }
+      });
+      document.documentElement.lang = currentLang;
+      document.getElementById('lang-toggle').textContent = currentLang === 'es' ? 'EN' : 'ES';
+    }
+
+    // Language toggle
+    document.getElementById('lang-toggle').addEventListener('click', () => {
+      currentLang = currentLang === 'es' ? 'en' : 'es';
+      localStorage.setItem('bookmarks-utils-lang', currentLang);
+      applyTranslations();
+    });
+
+    // Theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    let currentTheme = localStorage.getItem('bookmarks-utils-theme') || 'auto';
+
+    function applyTheme() {
+      if (currentTheme === 'auto') {
+        document.documentElement.removeAttribute('data-theme');
+        themeToggle.textContent = '🌙';
+      } else if (currentTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.textContent = '☀️';
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeToggle.textContent = '🌙';
+      }
+    }
+
+    themeToggle.addEventListener('click', () => {
+      if (currentTheme === 'auto') {
+        // Detect current system preference and lock to it
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        currentTheme = prefersDark ? 'dark' : 'light';
+      } else if (currentTheme === 'dark') {
+        currentTheme = 'light';
+      } else {
+        currentTheme = 'auto';
+      }
+      localStorage.setItem('bookmarks-utils-theme', currentTheme);
+      applyTheme();
+    });
+
+    // Initialize
+    applyTheme();
+    applyTranslations();
+  </script>
+
+</body>
+</html>
