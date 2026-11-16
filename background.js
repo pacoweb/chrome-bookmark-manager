@@ -42,7 +42,10 @@ function flattenTree(nodes) {
         id: node.id,
         title: node.title,
         url: node.url,
-        parentId: node.parentId
+        parentId: node.parentId,
+        dateAdded: node.dateAdded,
+        lastModified: node.lastModified,
+        dateLastUsed: node.dateLastUsed
       });
     }
     if (node.children) {
@@ -187,11 +190,11 @@ async function startPersistentHealthCheck(bookmarks) {
     const lang = result.language || 'es';
     const notifications = {
       es: {
-        title: 'Bookmark Manager',
+        title: 'Bookmarks Utilities',
         message: `Verificación completa: ${deadBookmarks.length} enlaces problemáticos encontrados de ${bookmarks.length}`
       },
       en: {
-        title: 'Bookmark Manager',
+        title: 'Bookmarks Utilities',
         message: `Check complete: ${deadBookmarks.length} problematic links found out of ${bookmarks.length}`
       }
     };
@@ -361,9 +364,58 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (message.action === 'applyOpenMode') {
+    applyOpenMode();
+    sendResponse({ success: true });
+    return false;
+  }
+
+  if (message.action === 'getBookmarkStats') {
+    getCachedBookmarks().then(bookmarks => {
+      const total = bookmarks.length;
+      const now = Date.now();
+      const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+      const last7Days = bookmarks.filter(bm => bm.dateAdded && bm.dateAdded >= sevenDaysAgo).length;
+      sendResponse({ total, last7Days });
+    });
+    return true;
+  }
 });
 
 // Initialize cache on service worker start
 chrome.runtime.onInstalled.addListener(() => {
   cacheBookmarkTree();
+  // Set up side panel
+  chrome.sidePanel.setOptions({
+    enabled: true,
+    path: 'popup.html'
+  });
+  // Apply open mode preference on install
+  applyOpenMode();
+});
+
+// Apply open mode: toggle default_popup vs side panel
+async function applyOpenMode() {
+  const stored = await new Promise((resolve) => {
+    chrome.storage.local.get(['openMode'], (result) => resolve(result));
+  });
+  const mode = stored.openMode || 'popup';
+
+  if (mode === 'sidePanel') {
+    // Remove default_popup so clicking the icon doesn't open the popup
+    chrome.action.setPopup({ popup: '' });
+  } else {
+    // Restore default popup
+    chrome.action.setPopup({ popup: 'popup.html' });
+  }
+}
+
+// Handle icon click to open side panel if preferred
+chrome.action.onClicked.addListener((tab) => {
+  chrome.storage.local.get(['openMode'], (result) => {
+    if (result.openMode === 'sidePanel') {
+      chrome.sidePanel.open({ windowId: tab.windowId });
+    }
+  });
 });

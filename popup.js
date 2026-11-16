@@ -31,8 +31,9 @@ const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const deleteModal = document.getElementById('delete-modal');
 const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-const languageSelect = document.getElementById('language-select');
+const settingsBtn = document.getElementById('settings-btn');
 const appVersion = document.getElementById('app-version');
+const groupBySelect = document.getElementById('group-by-select');
 
 // =====================
 // i18n - Language Switching
@@ -42,14 +43,48 @@ function applyTranslations() {
   // Update all elements with data-i18n attribute
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    el.textContent = t(key);
+    // Preserve child elements (like collapsible icons) - update only text nodes
+    const translated = t(key);
+    // For collapsible toggles, preserve the icon span
+    if (el.classList.contains('collapsible-toggle')) {
+      const icon = el.querySelector('.collapsible-icon');
+      if (icon) {
+        // Set text before the icon
+        icon.textContent = '▼';
+        // Update the text node before the icon
+        const textNode = document.createTextNode(translated + ' ');
+        el.insertBefore(textNode, icon);
+        // Remove any other text nodes
+        Array.from(el.childNodes).forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE && node !== textNode) {
+            el.removeChild(node);
+          }
+        });
+      } else {
+        el.textContent = translated;
+      }
+    } else {
+      el.textContent = translated;
+    }
+  });
+
+  // Update group-by selector options
+  const groupByOptions = groupBySelect.querySelectorAll('option[data-i18n-opt]');
+  groupByOptions.forEach(opt => {
+    const key = opt.getAttribute('data-i18n-opt');
+    opt.textContent = t(key);
   });
 
   // Update dynamic elements
   searchInput.placeholder = t('search.placeholder');
   deleteSearchBtn.title = t('search.deleteAll');
   appVersion.textContent = t('app.version');
-  languageSelect.value = currentLang;
+  if (settingsBtn) {
+    settingsBtn.title = t('settings.title');
+  }
+
+  // Update lang attribute on html element
+  document.documentElement.lang = currentLang;
 
   // Re-render current views
   const activeTab = document.querySelector('.tab-btn.active');
@@ -65,14 +100,21 @@ function applyTranslations() {
       if (deadLinks.length > 0) {
         renderDeadLinks();
       }
+    } else if (tabName === 'statistics' && statisticsLoaded) {
+      renderStatistics();
     }
   }
 }
 
-languageSelect.addEventListener('change', (e) => {
-  saveLanguage(e.target.value);
-  applyTranslations();
-});
+// =====================
+// Settings Button
+// =====================
+
+if (settingsBtn) {
+  settingsBtn.addEventListener('click', () => {
+    window.open('settings.html', '_blank');
+  });
+}
 
 // =====================
 // Tab Navigation
@@ -80,14 +122,51 @@ languageSelect.addEventListener('change', (e) => {
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
-    btn.classList.add('active');
-    const tabName = btn.dataset.tab;
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    switchTab(btn);
+  });
+  // Keyboard support for tabs: Arrow keys
+  btn.addEventListener('keydown', (e) => {
+    const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+    const index = tabs.indexOf(btn);
+    let newIndex = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      newIndex = (index + 1) % tabs.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      newIndex = (index - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      newIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      newIndex = tabs.length - 1;
+    }
+    if (newIndex >= 0) {
+      tabs[newIndex].focus();
+      switchTab(tabs[newIndex]);
+    }
   });
 });
+
+function switchTab(btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  const tabName = btn.dataset.tab;
+  document.getElementById(`${tabName}-tab`).classList.add('active');
+  
+  // Load statistics only when the tab is shown
+  if (tabName === 'statistics' && !statisticsLoaded) {
+    renderStatistics();
+    statisticsLoaded = true;
+  }
+}
 
 // =====================
 // Utility Functions
@@ -171,6 +250,14 @@ function onSearchInput(query) {
     return;
   }
   
+  // Minimum 3 characters required
+  if (query.trim().length < 3) {
+    searchResults.innerHTML = `<div class="empty-state">${t('search.minChars')}</div>`;
+    searchCount.textContent = '';
+    deleteSearchBtn.style.display = 'none';
+    return;
+  }
+  
   // Show loading state immediately for responsiveness
   searchResults.innerHTML = `<div class="empty-state">${t('search.searching')}</div>`;
   
@@ -227,6 +314,9 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   
   const info = document.createElement('div');
   info.className = 'bookmark-info';
+  info.setAttribute('tabindex', '0');
+  info.setAttribute('role', 'link');
+  info.setAttribute('aria-label', t('a11y.openLink') + ': ' + bm.title);
   
   const title = document.createElement('div');
   title.className = 'bookmark-title';
@@ -237,6 +327,8 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   if (cachedHealth) {
     const indicator = document.createElement('span');
     indicator.className = `health-indicator health-${cachedHealth}`;
+    indicator.setAttribute('aria-label', getHealthStatusLabel(cachedHealth));
+    indicator.setAttribute('aria-hidden', 'false');
     title.appendChild(indicator);
   }
   
@@ -249,8 +341,16 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   info.appendChild(url);
   
   // Click to open
-  info.addEventListener('click', () => {
+  const openBookmark = () => {
     chrome.tabs.create({ url: bm.url });
+  };
+  info.addEventListener('click', openBookmark);
+  // Keyboard support: Enter and Space to open
+  info.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openBookmark();
+    }
   });
   
   // Action buttons
@@ -263,6 +363,7 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
     checkBtn.className = 'check-link-btn';
     checkBtn.textContent = '🔗';
     checkBtn.title = t('action.checkLink');
+    checkBtn.setAttribute('aria-label', t('a11y.checkLink'));
     checkBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       checkSingleBookmarkLink(bm, checkBtn);
@@ -274,6 +375,7 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   editBtn.className = 'edit-btn';
   editBtn.textContent = '✏️';
   editBtn.title = t('action.edit');
+  editBtn.setAttribute('aria-label', t('a11y.editBookmark'));
   editBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     openEditModal(bm);
@@ -283,6 +385,7 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   deleteBtn.className = 'delete-btn';
   deleteBtn.textContent = '🗑️';
   deleteBtn.title = t('action.delete');
+  deleteBtn.setAttribute('aria-label', t('a11y.deleteBookmark'));
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     openDeleteModal(bm.id);
@@ -295,6 +398,16 @@ function createBookmarkElement(bm, highlightTermsArr = [], context = '') {
   item.appendChild(actions);
   
   return item;
+}
+
+function getHealthStatusLabel(status) {
+  const labels = {
+    ok: t('a11y.healthOk'),
+    dead: t('a11y.healthDead'),
+    timeout: t('a11y.healthTimeout'),
+    unknown: t('a11y.healthUnknown')
+  };
+  return labels[status] || status;
 }
 
 // Individual link check
@@ -364,8 +477,37 @@ deleteSearchBtn.addEventListener('click', async () => {
 });
 
 // =====================
-// Grouping by Host
+// Grouping
 // =====================
+
+/**
+ * Get the group key for a bookmark based on the selected grouping mode.
+ */
+function getGroupKey(bm) {
+  const mode = groupBySelect.value;
+  
+  if (mode === 'host' || mode === 'host-desc' || mode === 'host-count-desc') {
+    return extractDomain(bm.url);
+  }
+  
+  if (mode === 'year' || mode === 'year-desc' || mode === 'yearmonth' || mode === 'yearmonth-desc') {
+    if (bm.dateAdded) {
+      const date = new Date(bm.dateAdded);
+      const year = date.getFullYear();
+      if (mode === 'year' || mode === 'year-desc') {
+        return String(year);
+      }
+      // yearmonth or yearmonth-desc
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const month = monthNames[date.getMonth()];
+      return `${year} - ${month}`;
+    }
+    // Fallback for bookmarks without dateAdded
+    return t('groups.folders');
+  }
+  
+  return extractDomain(bm.url);
+}
 
 function renderGroups() {
   groupsContainer.innerHTML = '';
@@ -375,20 +517,42 @@ function renderGroups() {
     return;
   }
   
-  // Group by domain
+  // Group by selected mode
   const groups = {};
   allBookmarks.forEach(bm => {
-    const domain = extractDomain(bm.url);
-    if (!groups[domain]) {
-      groups[domain] = [];
+    const key = getGroupKey(bm);
+    if (!groups[key]) {
+      groups[key] = [];
     }
-    groups[domain].push(bm);
+    groups[key].push(bm);
   });
   
-  // Sort groups alphabetically
-  const sortedDomains = Object.keys(groups).sort();
+  // Sort groups: numerically for year-based, alphabetically otherwise; support descending modes
+  const mode = groupBySelect.value;
+  const desc = mode.endsWith('-desc');
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    if (mode === 'host-count-desc') {
+      // Sort by bookmark count descending (most bookmarks first)
+      return groups[b].length - groups[a].length;
+    }
+    if (mode === 'year' || mode === 'year-desc') {
+      return desc ? Number(b) - Number(a) : Number(a) - Number(b);
+    }
+    if (mode === 'yearmonth' || mode === 'yearmonth-desc') {
+      // Sort by year first, then by month position
+      const parseYM = (str) => {
+        const parts = str.split(' - ');
+        const year = Number(parts[0]);
+        const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const month = monthNames.indexOf(parts[1]);
+        return year * 12 + month;
+      };
+      return desc ? parseYM(b) - parseYM(a) : parseYM(a) - parseYM(b);
+    }
+    return desc ? b.localeCompare(a) : a.localeCompare(b);
+  });
   
-  sortedDomains.forEach(domain => {
+  sortedKeys.forEach(key => {
     const group = document.createElement('div');
     group.className = 'group';
     
@@ -399,21 +563,32 @@ function renderGroups() {
     arrow.className = 'arrow';
     arrow.textContent = '▼';
     
-    const domainName = document.createElement('span');
-    domainName.textContent = domain;
+    const groupName = document.createElement('span');
+    groupName.textContent = key;
     
     const count = document.createElement('span');
     count.className = 'group-count';
-    count.textContent = `(${groups[domain].length})`;
+    count.textContent = `(${groups[key].length})`;
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'group-delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.title = t('groups.deleteGroup');
+    deleteBtn.setAttribute('aria-label', t('a11y.deleteGroup') + ': ' + key);
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDeleteGroupModal(key, groups[key]);
+    });
     
     header.appendChild(arrow);
-    header.appendChild(domainName);
+    header.appendChild(groupName);
     header.appendChild(count);
+    header.appendChild(deleteBtn);
     
     const items = document.createElement('div');
     items.className = 'group-items collapsed'; // Collapsed by default
     
-    groups[domain].forEach(bm => {
+    groups[key].forEach(bm => {
       const item = createBookmarkElement(bm, [], 'group');
       items.appendChild(item);
     });
@@ -430,6 +605,11 @@ function renderGroups() {
   });
 }
 
+// Group by selector change
+groupBySelect.addEventListener('change', () => {
+  renderGroups();
+});
+
 // Collapse all groups
 collapseAllBtn.addEventListener('click', () => {
   groupsContainer.querySelectorAll('.group-header').forEach(h => h.classList.add('collapsed'));
@@ -443,21 +623,158 @@ expandAllBtn.addEventListener('click', () => {
 });
 
 // =====================
+// Statistics
+// =====================
+
+let statisticsLoaded = false;
+
+function renderStatistics() {
+  const container = document.getElementById('statistics-container');
+  
+  if (allBookmarks.length === 0) {
+    container.innerHTML = `<div class="empty-state">${t('statistics.noBookmarks')}</div>`;
+    return;
+  }
+  
+  // Sort bookmarks by dateAdded to find first and last
+  const bookmarksWithDate = allBookmarks.filter(bm => bm.dateAdded && bm.url);
+  const sorted = bookmarksWithDate.sort((a, b) => a.dateAdded - b.dateAdded);
+  
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="empty-state">${t('statistics.noBookmarks')}</div>`;
+    return;
+  }
+  
+  const total = allBookmarks.length;
+  const firstBookmark = sorted[0];
+  const lastBookmarks = sorted.slice(-5).reverse();
+  
+  // Count bookmarks added in the last 7 days
+  const now = Date.now();
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+  const last7DaysCount = allBookmarks.filter(bm => bm.dateAdded && bm.dateAdded >= sevenDaysAgo).length;
+  
+  // Locale for number formatting based on current language
+  const locale = (currentLang === 'en') ? 'en-US' : 'es-ES';
+  const formatNumber = (num) => num.toLocaleString(locale, { useGrouping: true });
+  
+  let html = '<div class="statistics-content">';
+  
+  // Top row: totals only (total bookmarks + last 7 days side by side)
+  html += `<div class="stat-row">`;
+  
+  // Total bookmarks card
+  html += `<div class="stat-card stat-card-total">
+    <div class="stat-value">${formatNumber(total)}</div>
+    <div class="stat-label">${t('statistics.total')}</div>
+  </div>`;
+  
+  // Last 7 days card
+  html += `<div class="stat-card stat-card-total">
+    <div class="stat-value">${formatNumber(last7DaysCount)}</div>
+    <div class="stat-label">${t('statistics.last7Days')}</div>
+  </div>`;
+  
+  html += `</div>`; // end stat-row
+  
+  // Last bookmarks added (collapsible, initially collapsed)
+  html += `<div class="stat-section collapsible-section collapsed">
+    <h3 class="stat-section-title collapsible-toggle" role="button" tabindex="0" aria-expanded="false">${t('statistics.lastAdded')} <span class="collapsible-icon" aria-hidden="true">▼</span></h3>
+    <div class="collapsible-body">`;
+  lastBookmarks.forEach(bm => {
+    html += `<a class="stat-link" href="${escapeHtml(bm.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(bm.title)} (${t('a11y.openInNewTab')})">
+      <div class="stat-item-title">${escapeHtml(bm.title)}</div>
+      <div class="stat-item-url">${escapeHtml(bm.url)}</div>
+      <div class="stat-item-date">${formatDate(bm.dateAdded)}</div>
+    </a>`;
+  });
+  html += `</div></div>`; // end collapsible-body + stat-section
+
+  // Last links used (based on dateLastUsed, initially collapsed)
+  const bookmarksWithDateLastUsed = allBookmarks.filter(bm => bm.dateLastUsed && bm.url);
+  if (bookmarksWithDateLastUsed.length > 0) {
+    const byDateLastUsed = bookmarksWithDateLastUsed.sort((a, b) => b.dateLastUsed - a.dateLastUsed);
+    const lastUsed = byDateLastUsed.slice(0, 5);
+    html += `<div class="stat-section collapsible-section collapsed">
+      <h3 class="stat-section-title collapsible-toggle" role="button" tabindex="0" aria-expanded="false">${t('statistics.lastUsed')} <span class="collapsible-icon" aria-hidden="true">▼</span></h3>
+      <div class="collapsible-body">`;
+    lastUsed.forEach(bm => {
+      html += `<a class="stat-link" href="${escapeHtml(bm.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(bm.title)} (${t('a11y.openInNewTab')})">
+        <div class="stat-item-title">${escapeHtml(bm.title)}</div>
+        <div class="stat-item-url">${escapeHtml(bm.url)}</div>
+        <div class="stat-item-date">${formatDate(bm.dateLastUsed)}</div>
+      </a>`;
+    });
+    html += `</div></div>`; // end collapsible-body + stat-section
+  }
+
+  // First link added (collapsible, initially collapsed)
+  html += `<div class="stat-section collapsible-section collapsed">
+    <h3 class="stat-section-title collapsible-toggle" role="button" tabindex="0" aria-expanded="false">${t('statistics.firstAdded')} <span class="collapsible-icon" aria-hidden="true">▼</span></h3>
+    <div class="collapsible-body">
+    <a class="stat-link" href="${escapeHtml(firstBookmark.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(firstBookmark.title)} (${t('a11y.openInNewTab')})">
+      <div class="stat-item-title">${escapeHtml(firstBookmark.title)}</div>
+      <div class="stat-item-url">${escapeHtml(firstBookmark.url)}</div>
+      <div class="stat-item-date">${formatDate(firstBookmark.dateAdded)}</div>
+    </a>
+    </div></div>`; // end collapsible-body + stat-section
+  
+  html += '</div>'; // end statistics-content
+  container.innerHTML = html;
+}
+
+// Collapsible sections toggle
+const statisticsContainer = document.getElementById('statistics-container');
+statisticsContainer.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.collapsible-toggle');
+  if (!toggle) return;
+  const section = toggle.closest('.collapsible-section');
+  if (!section) return;
+  toggleCollapsibleSection(section, toggle);
+});
+// Keyboard support for collapsible sections
+statisticsContainer.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    const toggle = e.target.closest('.collapsible-toggle');
+    if (!toggle) return;
+    e.preventDefault();
+    const section = toggle.closest('.collapsible-section');
+    if (!section) return;
+    toggleCollapsibleSection(section, toggle);
+  }
+});
+
+function toggleCollapsibleSection(section, toggle) {
+  const isCollapsed = section.classList.toggle('collapsed');
+  toggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+}
+
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString(currentLang === 'en' ? 'en-US' : 'es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+// =====================
 // Dead Link Detector (Persistent)
 // =====================
 
-// Check if there's an ongoing health check from a previous session
+// Check if there's an ongoing health check from a previous session - reset if incomplete
 async function checkOngoingHealthCheck() {
   const response = await sendMessage('getHealthCheckStatus');
   const status = response.status;
   
   if (status && status.running) {
-    // Resume showing progress
-    progressContainer.style.display = 'block';
-    checkLinksBtn.style.display = 'none';
-    cancelCheckBtn.style.display = 'inline-block';
-    updateProgress(status.checked, status.total);
-    startHealthPolling();
+    // Process was interrupted - reset it so the user can start fresh
+    await sendMessage('cancelHealthCheck');
+    progressContainer.style.display = 'none';
+    checkLinksBtn.style.display = 'inline-block';
+    cancelCheckBtn.style.display = 'none';
+    checkLinksBtn.disabled = false;
+    progressText.textContent = '';
   } else if (status && !status.running && status.total > 0) {
     // Check if there are saved results
     const resultsResponse = await sendMessage('getHealthCheckResults');
@@ -476,6 +793,11 @@ function updateProgress(checked, total) {
   const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
   progressFill.style.width = `${percent}%`;
   progressText.textContent = `${t('deadLinks.checking')} ${checked}/${total}`;
+  // Update progressbar aria-valuenow
+  const progressBar = document.getElementById('progress-bar');
+  if (progressBar) {
+    progressBar.setAttribute('aria-valuenow', percent);
+  }
 }
 
 // Poll the background for progress updates
@@ -596,10 +918,14 @@ function renderDeadLinks() {
     const indicator = document.createElement('span');
     indicator.className = `dead-link-indicator health-${bm.healthStatus}`;
     indicator.title = getHealthStatusTooltip(bm.healthStatus);
+    indicator.setAttribute('aria-label', getHealthStatusLabel(bm.healthStatus));
     
     const info = document.createElement('div');
     info.className = 'bookmark-info';
     info.style.cursor = 'pointer';
+    info.setAttribute('tabindex', '0');
+    info.setAttribute('role', 'link');
+    info.setAttribute('aria-label', t('a11y.openLink') + ': ' + bm.title);
     
     const title = document.createElement('div');
     title.className = 'bookmark-title';
@@ -614,8 +940,16 @@ function renderDeadLinks() {
     info.appendChild(url);
     
     // Click to open the link (even if dead)
-    info.addEventListener('click', () => {
+    const openDeadLink = () => {
       chrome.tabs.create({ url: bm.url });
+    };
+    info.addEventListener('click', openDeadLink);
+    // Keyboard support
+    info.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openDeadLink();
+      }
     });
     
     // Status badge
@@ -637,6 +971,7 @@ function renderDeadLinks() {
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = '🗑️';
     deleteBtn.title = t('action.deleteThis');
+    deleteBtn.setAttribute('aria-label', t('a11y.deleteBookmark') + ': ' + bm.title);
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       deleteSingleDeadLink(bm);
@@ -755,11 +1090,16 @@ deleteDeadBtn.addEventListener('click', async () => {
 // CRUD Operations
 // =====================
 
+let lastFocusedElementBeforeModal = null;
+
 function openEditModal(bm) {
   editingBookmarkId = bm.id;
   editTitle.value = bm.title;
   editUrl.value = bm.url;
+  lastFocusedElementBeforeModal = document.activeElement;
   editModal.style.display = 'flex';
+  // Focus the first input in the modal
+  setTimeout(() => editTitle.focus(), 50);
 }
 
 function closeEditModal() {
@@ -767,6 +1107,11 @@ function closeEditModal() {
   editingBookmarkId = null;
   editTitle.value = '';
   editUrl.value = '';
+  // Restore focus to the element that had focus before opening
+  if (lastFocusedElementBeforeModal) {
+    lastFocusedElementBeforeModal.focus();
+    lastFocusedElementBeforeModal = null;
+  }
 }
 
 saveEditBtn.addEventListener('click', async () => {
@@ -811,12 +1156,20 @@ editModal.addEventListener('click', (e) => {
 
 function openDeleteModal(id) {
   deletingBookmarkId = id;
+  lastFocusedElementBeforeModal = document.activeElement;
   deleteModal.style.display = 'flex';
+  // Focus the confirm button
+  setTimeout(() => confirmDeleteBtn.focus(), 50);
 }
 
 function closeDeleteModal() {
   deleteModal.style.display = 'none';
   deletingBookmarkId = null;
+  // Restore focus to the element that had focus before opening
+  if (lastFocusedElementBeforeModal) {
+    lastFocusedElementBeforeModal.focus();
+    lastFocusedElementBeforeModal = null;
+  }
 }
 
 confirmDeleteBtn.addEventListener('click', async () => {
@@ -846,6 +1199,41 @@ cancelDeleteBtn.addEventListener('click', closeDeleteModal);
 deleteModal.addEventListener('click', (e) => {
   if (e.target === deleteModal) closeDeleteModal();
 });
+
+// =====================
+// Delete Group
+// =====================
+
+let deletingGroupBookmarks = null; // { groupKey, bookmarks }
+
+function openDeleteGroupModal(groupKey, bookmarks) {
+  const message = t('groups.deleteGroupConfirm')
+    .replace('{count}', bookmarks.length)
+    .replace('{group}', groupKey);
+  
+  const confirmed = confirm(message);
+  if (!confirmed) return;
+  
+  deletingGroupBookmarks = { groupKey, bookmarks };
+  
+  // Remove all bookmarks in the group
+  (async () => {
+    try {
+      const ids = bookmarks.map(bm => bm.id);
+      await sendMessage('removeBookmarksByIds', { ids });
+      
+      // Refresh cache
+      await loadBookmarks();
+      
+      // Refresh groups view
+      renderGroups();
+    } catch (error) {
+      alert(t('alert.deleteError') + error.message);
+    } finally {
+      deletingGroupBookmarks = null;
+    }
+  })();
+}
 
 // =====================
 // Initialization

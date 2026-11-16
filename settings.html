@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración - Bookmarks Utilities</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <div class="settings-header">
+      <div class="settings-app-title" data-i18n="settings.appTitle">📑 Bookmarks Utilities</div>
+      <h1 data-i18n="settings.title">⚙️ Configuración</h1>
+      <span id="app-version" class="app-version"></span>
+    </div>
+
+    <!-- Language Setting -->
+    <div class="setting-group">
+      <label for="language-select" data-i18n="settings.language">Idioma</label>
+      <select id="language-select" aria-label="Idioma">
+        <option value="es">🇪🇸 Español</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+    </div>
+
+    <!-- Open Mode Setting -->
+    <div class="setting-group">
+      <div class="radio-group" role="radiogroup" aria-label="Modo de apertura">
+        <label class="radio-option">
+          <input type="radio" name="open-mode" value="popup" role="radio" aria-label="Popup">
+          <span data-i18n="settings.modePopup">Popup</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="open-mode" value="sidePanel" role="radio" aria-label="Panel lateral">
+          <span data-i18n="settings.modeSidePanel">Panel lateral</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Backup Recovery Section -->
+    <div class="setting-group">
+      <h3 data-i18n="settings.backups">Copias de seguridad</h3>
+      <div id="backups-list" class="backups-list" role="list" aria-label="Copias de seguridad">
+        <div class="no-backups" data-i18n="settings.noBackups">No hay copias de seguridad disponibles</div>
+      </div>
+    </div>
+
+    <!-- Save message -->
+    <div id="save-message" class="save-message" data-i18n="settings.saved">✅ Configuración guardada</div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

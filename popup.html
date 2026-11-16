@@ -3,73 +3,86 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bookmark Manager</title>
+  <title>Bookmarks Utilities</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <a href="#main-content" class="skip-link" id="skip-link" data-i18n="a11y.skipToMain">Saltar al contenido principal</a>
   <div class="container">
     <div class="header-row">
-      <h1 id="app-title">📑 Bookmark Manager</h1>
+      <h1 id="app-title">📑 Bookmarks Utilities</h1>
       <span id="app-version" class="app-version"></span>
-    </div>
-
-    <!-- Language Selector -->
-    <div class="language-selector">
-      <select id="language-select">
-        <option value="es">🇪🇸 Español</option>
-        <option value="en">🇬🇧 English</option>
-      </select>
+      <button id="settings-btn" class="settings-btn" title="Configuración" aria-label="Configuración">⚙️</button>
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="search" data-i18n="tab.search">🔍 Búsqueda</button>
-      <button class="tab-btn" data-tab="groups" data-i18n="tab.groups">📁 Grupos</button>
-      <button class="tab-btn" data-tab="dead-links" data-i18n="tab.deadLinks">❌ Enlaces Muertos</button>
+    <div class="tabs" role="tablist" aria-label="Pestañas de navegación" id="tablist">
+      <button id="tab-search" class="tab-btn active" role="tab" data-tab="search" aria-selected="true" aria-controls="search-tab" data-i18n="tab.search">🔍 Búsqueda</button>
+      <button id="tab-groups" class="tab-btn" role="tab" data-tab="groups" aria-selected="false" aria-controls="groups-tab" data-i18n="tab.groups">📁 Grupos</button>
+      <button id="tab-dead-links" class="tab-btn" role="tab" data-tab="dead-links" aria-selected="false" aria-controls="dead-links-tab" data-i18n="tab.deadLinks">❌ Enlaces Muertos</button>
+      <button id="tab-statistics" class="tab-btn" role="tab" data-tab="statistics" aria-selected="false" aria-controls="statistics-tab" data-i18n="tab.statistics">📊 Estadísticas</button>
     </div>
 
     <!-- Search Tab -->
-    <div class="tab-content active" id="search-tab">
+    <div class="tab-content active" role="tabpanel" id="search-tab" aria-labelledby="tab-search">
       <div class="search-box">
         <input type="text" id="search-input" placeholder="Buscar por título o URL...">
       </div>
       <div class="search-controls">
         <span id="search-count" class="search-count"></span>
-        <button id="delete-search-btn" class="btn-danger btn-small" style="display: none;">🗑️</button>
+        <button id="delete-search-btn" class="btn-danger btn-small" style="display: none;" aria-label="Eliminar todos">🗑️</button>
       </div>
-      <div id="search-results" class="results-list"></div>
+      <div id="search-results" class="results-list" role="region" aria-live="polite"></div>
     </div>
 
     <!-- Groups Tab -->
-    <div class="tab-content" id="groups-tab">
+    <div class="tab-content" role="tabpanel" id="groups-tab" aria-labelledby="tab-groups">
       <div class="groups-controls">
-        <button id="collapse-all-btn" class="btn-secondary btn-small" data-i18n="groups.collapseAll">Colapsar todo</button>
-        <button id="expand-all-btn" class="btn-secondary btn-small" data-i18n="groups.expandAll">Expandir todo</button>
+        <select id="group-by-select" class="group-by-select" aria-label="Agrupar por">
+          <option value="host" data-i18n-opt="groups.byHost">Por host</option>
+          <option value="host-desc" data-i18n-opt="groups.byHostDesc">Por host (desc)</option>
+          <option value="host-count-desc" data-i18n-opt="groups.byHostCountDesc">Por host (más marcadores)</option>
+          <option value="year" data-i18n-opt="groups.byYear">Por año</option>
+          <option value="year-desc" data-i18n-opt="groups.byYearDesc">Por año (desc)</option>
+          <option value="yearmonth" data-i18n-opt="groups.byYearMonth">Por año y mes</option>
+          <option value="yearmonth-desc" data-i18n-opt="groups.byYearMonthDesc">Por año y mes (desc)</option>
+        </select>
+        <button id="collapse-all-btn" class="btn-secondary btn-small" aria-label="Colapsar todo" data-i18n="groups.collapseAll">Colapsar todo</button>
+        <button id="expand-all-btn" class="btn-secondary btn-small" aria-label="Expandir todo" data-i18n="groups.expandAll">Expandir todo</button>
       </div>
-      <div id="groups-container" class="groups-list"></div>
+      <div id="groups-container" class="groups-list" role="region" aria-live="polite"></div>
     </div>
 
     <!-- Dead Links Tab -->
-    <div class="tab-content" id="dead-links-tab">
+    <div class="tab-content" role="tabpanel" id="dead-links-tab" aria-labelledby="tab-dead-links">
+      <div class="dead-links-warning" data-i18n="deadLinks.warning">⚠️ Algunos enlaces válidos pueden marcarse como rotos por restricciones de acceso, CAPTCHAs o errores temporales.</div>
       <div class="dead-links-controls">
-        <button id="check-links-btn" class="btn-primary" data-i18n="deadLinks.checkBtn">Verificar Enlaces</button>
-        <button id="cancel-check-btn" class="btn-secondary" style="display: none;" data-i18n="deadLinks.cancelBtn">Cancelar</button>
-        <button id="delete-dead-btn" class="btn-danger" disabled data-i18n="deadLinks.deleteAll">Eliminar Todos los Muertos</button>
+        <button id="check-links-btn" class="btn-primary" aria-label="Verificar enlaces" data-i18n="deadLinks.checkBtn">Verificar Enlaces</button>
+        <button id="cancel-check-btn" class="btn-secondary" style="display: none;" aria-label="Cancelar verificación" data-i18n="deadLinks.cancelBtn">Cancelar</button>
+        <button id="delete-dead-btn" class="btn-danger" disabled aria-label="Eliminar todos los muertos" data-i18n="deadLinks.deleteAll">Eliminar Todos los Muertos</button>
       </div>
       <div id="progress-container" class="progress-container" style="display: none;">
-        <div class="progress-bar">
+        <div class="progress-bar" role="progressbar" id="progress-bar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso de verificación">
           <div id="progress-fill" class="progress-fill"></div>
         </div>
         <p id="progress-text">Verificando...</p>
       </div>
-      <div id="dead-links-results" class="results-list"></div>
+      <div id="dead-links-results" class="results-list" role="region" aria-live="polite"></div>
+    </div>
+
+    <!-- Statistics Tab -->
+    <div class="tab-content" role="tabpanel" id="statistics-tab" aria-labelledby="tab-statistics">
+      <div id="statistics-container" class="statistics-container" role="region" aria-live="polite">
+        <div class="empty-state" data-i18n="statistics.loading">Cargando estadísticas...</div>
+      </div>
     </div>
   </div>
+  <div id="main-content"></div>
 
   <!-- Edit Modal -->
-  <div id="edit-modal" class="modal" style="display: none;">
+  <div id="edit-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
     <div class="modal-content">
-      <h2 data-i18n="modal.editTitle">Editar Marcador</h2>
+      <h2 id="edit-modal-title" data-i18n="modal.editTitle">Editar Marcador</h2>
       <label for="edit-title" data-i18n="modal.editLabelTitle">Título:</label>
       <input type="text" id="edit-title">
       <label for="edit-url" data-i18n="modal.editLabelUrl">URL:</label>
@@ -82,9 +95,9 @@
   </div>
 
   <!-- Delete Confirmation Modal -->
-  <div id="delete-modal" class="modal" style="display: none;">
+  <div id="delete-modal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
     <div class="modal-content">
-      <h2 data-i18n="modal.deleteTitle">Confirmar Eliminación</h2>
+      <h2 id="delete-modal-title" data-i18n="modal.deleteTitle">Confirmar Eliminación</h2>
       <p data-i18n="modal.deleteMessage">¿Estás seguro de que deseas eliminar este marcador?</p>
       <div class="modal-actions">
         <button id="confirm-delete-btn" class="btn-danger" data-i18n="modal.deleteConfirm">Eliminar</button>
