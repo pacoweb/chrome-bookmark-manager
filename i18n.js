@@ -6,7 +6,7 @@ const translations = {
   es: {
     // Title & Header
     'app.title': '📑 Bookmarks Utilities',
-    'app.version': 'v1.8.0',
+    'app.version': 'v1.2.0',
 
     // Tabs
     'tab.search': '🔍 Búsqueda',
@@ -152,7 +152,7 @@ const translations = {
   en: {
     // Title & Header
     'app.title': '📑 Bookmarks Utilities',
-    'app.version': 'v1.8.0',
+    'app.version': 'v1.2.0',
 
     // Tabs
     'tab.search': '🔍 Search',
