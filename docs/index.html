@@ -540,147 +540,188 @@
   </footer>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-    // ===== Translations =====
-    const translations = {
-      es: {
-        'header.tagline': 'Gestión avanzada de marcadores para Chrome',
-        'hero.title': 'Control total de tus marcadores',
-        'hero.description': 'Busca, organiza, detecta enlaces rotos y analiza tus marcadores con una extensión ligera y accesible.',
-        'hero.install': 'Instalar en Chrome',
-        'features.title': 'Características',
-        'features.search.title': 'Búsqueda inteligente',
-        'features.search.description': 'Busca por título o URL con un mínimo de 3 caracteres. Resultados instantáneos.',
-        'features.grouping.title': 'Agrupación por dominio',
-        'features.grouping.description': 'Organiza automáticamente tus marcadores por dominio para una navegación más rápida.',
-        'features.deadlinks.title': 'Detección de enlaces muertos',
-        'features.deadlinks.description': 'Verifica la salud de tus marcadores y elimina los enlaces que ya no funcionan.',
-        'features.stats.title': 'Estadísticas detalladas',
-        'features.stats.description': 'Visualiza totales, dominios únicos, últimos añadidos y últimos usados.',
-        'features.lang.title': 'Multiidioma',
-        'features.lang.description': 'Interfaz disponible en español e inglés. Cambia el idioma desde la configuración.',
-        'features.a11y.title': 'Accesibilidad ARIA',
-        'features.a11y.description': 'Navegación por teclado completa, roles ARIA y soporte para lectores de pantalla.',
-        'features.backup.title': 'Copia de seguridad',
-        'features.backup.description': 'Antes de eliminar enlaces rotos, se guarda un backup. Recupéralo desde la configuración.',
-        'features.settings.title': 'Configuración',
-        'features.settings.description': 'Elige el idioma y el modo de apertura: popup o panel lateral.',
-        'screenshots.title': 'Capturas de pantalla',
-        'screenshots.placeholder': 'Capturas de pantalla próximamente.',
-        'screenshots.hint': 'Añade imágenes en la carpeta docs/screenshots/ y actualiza esta sección.',
-        'changelog.title': 'Registro de cambios',
-        'changelog.v120.rename': 'Renombrado a <strong>Bookmarks Utilities</strong>',
-        'changelog.v120.a11y': 'Accesibilidad ARIA completa',
-        'changelog.v120.keyboard': 'Navegación por teclado en pestañas y marcadores',
-        'changelog.v120.search': 'Búsqueda con mínimo de 3 caracteres',
-        'changelog.v120.collapsible': 'Secciones colapsables en Estadísticas',
-        'changelog.v120.settings': 'Página de Configuración con idioma y modo de apertura',
-        'changelog.v120.backup': 'Recuperación de backups desde la configuración',
-        'changelog.v120.warning': 'Advertencia sobre falsos positivos en Enlaces Muertos',
-        'changelog.v110.i18n': 'Soporte de internacionalización (ES/EN)',
-        'changelog.v110.delete': 'Botón de eliminación compacto en resultados',
-        'warning.text': 'Algunos enlaces válidos pueden marcarse como rotos por restricciones de acceso, CAPTCHAs o errores temporales.',
-        'footer.github': 'Ver código en GitHub',
-        'footer.license': 'Licenciado bajo MIT · Bookmarks Utilities © 2026'
-      },
-      en: {
-        'header.tagline': 'Advanced bookmark management for Chrome',
-        'hero.title': 'Total control of your bookmarks',
-        'hero.description': 'Search, organize, detect broken links and analyze your bookmarks with a lightweight and accessible extension.',
-        'hero.install': 'Install on Chrome',
-        'features.title': 'Features',
-        'features.search.title': 'Smart Search',
-        'features.search.description': 'Search by title or URL with a minimum of 3 characters. Instant results.',
-        'features.grouping.title': 'Domain Grouping',
-        'features.grouping.description': 'Automatically organize your bookmarks by domain for faster navigation.',
-        'features.deadlinks.title': 'Dead Link Detection',
-        'features.deadlinks.description': 'Check the health of your bookmarks and remove links that no longer work.',
-        'features.stats.title': 'Detailed Statistics',
-        'features.stats.description': 'View totals, unique domains, recently added and recently used bookmarks.',
-        'features.lang.title': 'Multi-language',
-        'features.lang.description': 'Interface available in Spanish and English. Change language from settings.',
-        'features.a11y.title': 'ARIA Accessibility',
-        'features.a11y.description': 'Full keyboard navigation, ARIA roles and screen reader support.',
-        'features.backup.title': 'Backup & Recovery',
-        'features.backup.description': 'Before deleting broken links, a backup is saved. Restore it from settings.',
-        'features.settings.title': 'Settings',
-        'features.settings.description': 'Choose language and open mode: popup or side panel.',
-        'screenshots.title': 'Screenshots',
-        'screenshots.placeholder': 'Screenshots coming soon.',
-        'screenshots.hint': 'Add images in the docs/screenshots/ folder and update this section.',
-        'changelog.title': 'Changelog',
-        'changelog.v120.rename': 'Renamed to <strong>Bookmarks Utilities</strong>',
-        'changelog.v120.a11y': 'Full ARIA accessibility',
-        'changelog.v120.keyboard': 'Keyboard navigation in tabs and bookmarks',
-        'changelog.v120.search': 'Search with minimum 3 characters',
-        'changelog.v120.collapsible': 'Collapsible sections in Statistics',
-        'changelog.v120.settings': 'Settings page with language and open mode',
-        'changelog.v120.backup': 'Backup recovery from settings',
-        'changelog.v120.warning': 'Warning about false positives in Dead Links',
-        'changelog.v110.i18n': 'Internationalization support (ES/EN)',
-        'changelog.v110.delete': 'Compact delete button in results',
-        'warning.text': 'Some valid links may be marked as broken due to access restrictions, CAPTCHAs or temporary errors.',
-        'footer.github': 'View code on GitHub',
-        'footer.license': 'Licensed under MIT · Bookmarks Utilities © 2026'
-      }
-    };
-
-    let currentLang = localStorage.getItem('bookmarks-utils-lang') || 'es';
-
-    function applyTranslations() {
-      const t = translations[currentLang];
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (t[key]) {
-          el.innerHTML = t[key];
+    (function() {
+      // ===== Translations =====
+      const translations = {
+        es: {
+          'header.tagline': 'Gestión avanzada de marcadores para Chrome',
+          'hero.title': 'Control total de tus marcadores',
+          'hero.description': 'Busca, organiza, detecta enlaces rotos y analiza tus marcadores con una extensión ligera y accesible.',
+          'hero.install': 'Instalar en Chrome',
+          'features.title': 'Características',
+          'features.search.title': 'Búsqueda inteligente',
+          'features.search.description': 'Busca por título o URL con un mínimo de 3 caracteres. Resultados instantáneos.',
+          'features.grouping.title': 'Agrupación por dominio',
+          'features.grouping.description': 'Organiza automáticamente tus marcadores por dominio para una navegación más rápida.',
+          'features.deadlinks.title': 'Detección de enlaces muertos',
+          'features.deadlinks.description': 'Verifica la salud de tus marcadores y elimina los enlaces que ya no funcionan.',
+          'features.stats.title': 'Estadísticas detalladas',
+          'features.stats.description': 'Visualiza totales, dominios únicos, últimos añadidos y últimos usados.',
+          'features.lang.title': 'Multiidioma',
+          'features.lang.description': 'Interfaz disponible en español e inglés. Cambia el idioma desde la configuración.',
+          'features.a11y.title': 'Accesibilidad ARIA',
+          'features.a11y.description': 'Navegación por teclado completa, roles ARIA y soporte para lectores de pantalla.',
+          'features.backup.title': 'Copia de seguridad',
+          'features.backup.description': 'Antes de eliminar enlaces rotos, se guarda un backup. Recupéralo desde la configuración.',
+          'features.settings.title': 'Configuración',
+          'features.settings.description': 'Elige el idioma y el modo de apertura: popup o panel lateral.',
+          'screenshots.title': 'Capturas de pantalla',
+          'screenshots.placeholder': 'Capturas de pantalla próximamente.',
+          'screenshots.hint': 'Añade imágenes en la carpeta docs/screenshots/ y actualiza esta sección.',
+          'changelog.title': 'Registro de cambios',
+          'changelog.v120.rename': 'Renombrado a <strong>Bookmarks Utilities</strong>',
+          'changelog.v120.a11y': 'Accesibilidad ARIA completa',
+          'changelog.v120.keyboard': 'Navegación por teclado en pestañas y marcadores',
+          'changelog.v120.search': 'Búsqueda con mínimo de 3 caracteres',
+          'changelog.v120.collapsible': 'Secciones colapsables en Estadísticas',
+          'changelog.v120.settings': 'Página de Configuración con idioma y modo de apertura',
+          'changelog.v120.backup': 'Recuperación de backups desde la configuración',
+          'changelog.v120.warning': 'Advertencia sobre falsos positivos en Enlaces Muertos',
+          'changelog.v110.i18n': 'Soporte de internacionalización (ES/EN)',
+          'changelog.v110.delete': 'Botón de eliminación compacto en resultados',
+          'warning.text': 'Algunos enlaces válidos pueden marcarse como rotos por restricciones de acceso, CAPTCHAs o errores temporales.',
+          'footer.github': 'Ver código en GitHub',
+          'footer.license': 'Licenciado bajo MIT · Bookmarks Utilities © 2026'
+        },
+        en: {
+          'header.tagline': 'Advanced bookmark management for Chrome',
+          'hero.title': 'Total control of your bookmarks',
+          'hero.description': 'Search, organize, detect broken links and analyze your bookmarks with a lightweight and accessible extension.',
+          'hero.install': 'Install on Chrome',
+          'features.title': 'Features',
+          'features.search.title': 'Smart Search',
+          'features.search.description': 'Search by title or URL with a minimum of 3 characters. Instant results.',
+          'features.grouping.title': 'Domain Grouping',
+          'features.grouping.description': 'Automatically organize your bookmarks by domain for faster navigation.',
+          'features.deadlinks.title': 'Dead Link Detection',
+          'features.deadlinks.description': 'Check the health of your bookmarks and remove links that no longer work.',
+          'features.stats.title': 'Detailed Statistics',
+          'features.stats.description': 'View totals, unique domains, recently added and recently used bookmarks.',
+          'features.lang.title': 'Multi-language',
+          'features.lang.description': 'Interface available in Spanish and English. Change language from settings.',
+          'features.a11y.title': 'ARIA Accessibility',
+          'features.a11y.description': 'Full keyboard navigation, ARIA roles and screen reader support.',
+          'features.backup.title': 'Backup & Recovery',
+          'features.backup.description': 'Before deleting broken links, a backup is saved. Restore it from settings.',
+          'features.settings.title': 'Settings',
+          'features.settings.description': 'Choose language and open mode: popup or side panel.',
+          'screenshots.title': 'Screenshots',
+          'screenshots.placeholder': 'Screenshots coming soon.',
+          'screenshots.hint': 'Add images in the docs/screenshots/ folder and update this section.',
+          'changelog.title': 'Changelog',
+          'changelog.v120.rename': 'Renamed to <strong>Bookmarks Utilities</strong>',
+          'changelog.v120.a11y': 'Full ARIA accessibility',
+          'changelog.v120.keyboard': 'Keyboard navigation in tabs and bookmarks',
+          'changelog.v120.search': 'Search with minimum 3 characters',
+          'changelog.v120.collapsible': 'Collapsible sections in Statistics',
+          'changelog.v120.settings': 'Settings page with language and open mode',
+          'changelog.v120.backup': 'Backup recovery from settings',
+          'changelog.v120.warning': 'Warning about false positives in Dead Links',
+          'changelog.v110.i18n': 'Internationalization support (ES/EN)',
+          'changelog.v110.delete': 'Compact delete button in results',
+          'warning.text': 'Some valid links may be marked as broken due to access restrictions, CAPTCHAs or temporary errors.',
+          'footer.github': 'View code on GitHub',
+          'footer.license': 'Licensed under MIT · Bookmarks Utilities © 2026'
         }
-      });
-      document.documentElement.lang = currentLang;
-      document.getElementById('lang-toggle').textContent = currentLang === 'es' ? 'EN' : 'ES';
-    }
+      };
 
-    // Language toggle
-    document.getElementById('lang-toggle').addEventListener('click', () => {
-      currentLang = currentLang === 'es' ? 'en' : 'es';
-      localStorage.setItem('bookmarks-utils-lang', currentLang);
-      applyTranslations();
-    });
+      let currentLang = localStorage.getItem('bookmarks-utils-lang') || 'es';
 
-    // Theme toggle
-    const themeToggle = document.getElementById('theme-toggle');
-    let currentTheme = localStorage.getItem('bookmarks-utils-theme') || 'auto';
-
-    function applyTheme() {
-      if (currentTheme === 'auto') {
-        document.documentElement.removeAttribute('data-theme');
-        themeToggle.textContent = '🌙';
-      } else if (currentTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        themeToggle.textContent = '☀️';
-      } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-        themeToggle.textContent = '🌙';
+      function applyTranslations() {
+        const t = translations[currentLang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (t[key]) {
+            el.innerHTML = t[key];
+          }
+        });
+        document.documentElement.lang = currentLang;
+        const langToggle = document.getElementById('lang-toggle');
+        if (langToggle) langToggle.textContent = currentLang === 'es' ? 'EN' : 'ES';
       }
-    }
 
-    themeToggle.addEventListener('click', () => {
-      if (currentTheme === 'auto') {
-        // Detect current system preference and lock to it
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        currentTheme = prefersDark ? 'dark' : 'light';
-      } else if (currentTheme === 'dark') {
-        currentTheme = 'light';
-      } else {
-        currentTheme = 'auto';
+      // Theme toggle
+      let currentTheme = localStorage.getItem('bookmarks-utils-theme') || 'auto';
+
+      function applyTheme() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (currentTheme === 'auto') {
+          document.documentElement.removeAttribute('data-theme');
+          if (themeToggle) themeToggle.textContent = '🌙';
+        } else if (currentTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          if (themeToggle) themeToggle.textContent = '☀️';
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          if (themeToggle) themeToggle.textContent = '🌙';
+        }
       }
-      localStorage.setItem('bookmarks-utils-theme', currentTheme);
-      applyTheme();
-    });
 
-    // Initialize
-    applyTheme();
-    applyTranslations();
-    }); // End DOMContentLoaded
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          // Language toggle
+          const langToggle = document.getElementById('lang-toggle');
+          if (langToggle) {
+            langToggle.addEventListener('click', () => {
+              currentLang = currentLang === 'es' ? 'en' : 'es';
+              localStorage.setItem('bookmarks-utils-lang', currentLang);
+              applyTranslations();
+            });
+          }
+
+          // Theme toggle
+          const themeToggle = document.getElementById('theme-toggle');
+          if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+              if (currentTheme === 'auto') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                currentTheme = prefersDark ? 'dark' : 'light';
+              } else if (currentTheme === 'dark') {
+                currentTheme = 'light';
+              } else {
+                currentTheme = 'auto';
+              }
+              localStorage.setItem('bookmarks-utils-theme', currentTheme);
+              applyTheme();
+            });
+          }
+
+          // Initialize
+          applyTheme();
+          applyTranslations();
+        });
+      } else {
+        // DOM already ready
+        const langToggle = document.getElementById('lang-toggle');
+        if (langToggle) {
+          langToggle.addEventListener('click', () => {
+            currentLang = currentLang === 'es' ? 'en' : 'es';
+            localStorage.setItem('bookmarks-utils-lang', currentLang);
+            applyTranslations();
+          });
+        }
+
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+          themeToggle.addEventListener('click', () => {
+            if (currentTheme === 'auto') {
+              const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              currentTheme = prefersDark ? 'dark' : 'light';
+            } else if (currentTheme === 'dark') {
+              currentTheme = 'light';
+            } else {
+              currentTheme = 'auto';
+            }
+            localStorage.setItem('bookmarks-utils-theme', currentTheme);
+            applyTheme();
+          });
+        }
+
+        applyTheme();
+        applyTranslations();
+      }
+    })();
   </script>
 
 </body>
