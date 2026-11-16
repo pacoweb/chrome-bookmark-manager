@@ -159,6 +159,18 @@ Contributions are welcome! Here's how you can help:
 
 ## 📋 Changelog
 
+### v1.2.0 (2026-11-16)
+- 🔄 Renombrado a **Bookmarks Utilities**
+- ♿ Accesibilidad ARIA completa: roles en pestañas, modales, progressbar y listas
+- ⌨️ Navegación por teclado en pestañas (flechas, Home, End) y marcadores clickeables
+- 🔍 Búsqueda con mínimo de 3 caracteres
+- 📊 Secciones colapsables en Estadísticas (últimos añadidos, últimos usados, primer añadido)
+- ⚙️ Página de **Configuración** con selector de idioma y modo de apertura (popup/panel lateral)
+- 💾 Recuperación de backups de enlaces borrados desde la configuración
+- ⚠️ Advertencia en la pestaña Enlaces Muertos sobre falsos positivos
+- 🎨 Mejoras visuales: scrollbars uniformes, popup más ancho, body al 100%
+- 🌐 Traducción dinámica del título de la página de configuración
+
 ### v1.1.0 (2026-11-12)
 - 🌐 Internationalization support (ES/EN)
 - 🗑️ Compact delete button in search results
