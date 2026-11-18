@@ -6,8 +6,7 @@ const CACHE_TIMESTAMP_KEY = 'bookmark_cache_timestamp';
 const HEALTH_CHECK_KEY = 'health_check_results';
 const HEALTH_CHECK_STATUS_KEY = 'health_check_status';
 
-// Track ongoing health check
-let healthCheckRunning = false;
+// Health check state is stored in chrome.storage.session to survive SW restarts
 
 /**
  * Fetch the entire bookmark tree from Chrome and cache it in local storage.
@@ -146,10 +145,11 @@ async function checkLinksHealth(urls) {
  * Runs checks in parallel with a concurrency limit for better performance.
  */
 async function startPersistentHealthCheck(bookmarks) {
+  const { healthCheckRunning } = await chrome.storage.session.get('healthCheckRunning');
   if (healthCheckRunning) {
     return { success: false, error: 'Ya hay una verificación en curso' };
   }
-  healthCheckRunning = true;
+  await chrome.storage.session.set({ healthCheckRunning: true });
 
   // Save initial status
   await chrome.storage.local.set({
@@ -171,7 +171,7 @@ async function startPersistentHealthCheck(bookmarks) {
     // Update progress after each batch completes
     checkedCount++;
     await chrome.storage.local.set({
-      [HEALTH_CHECK_STATUS_KEY]: { running: healthCheckRunning, checked: checkedCount, total: bookmarks.length }
+      [HEALTH_CHECK_STATUS_KEY]: { running: true, checked: checkedCount, total: bookmarks.length }
     });
 
     return result;
@@ -183,28 +183,26 @@ async function startPersistentHealthCheck(bookmarks) {
     [HEALTH_CHECK_STATUS_KEY]: { running: false, checked: bookmarks.length, total: bookmarks.length }
   });
 
-  healthCheckRunning = false;
+  await chrome.storage.session.set({ healthCheckRunning: false });
 
   // Send notification with user's language
-  chrome.storage.local.get(['language'], (result) => {
-    const lang = result.language || 'es';
-    const notifications = {
-      es: {
-        title: 'Bookmarks Utilities',
-        message: `Verificación completa: ${deadBookmarks.length} enlaces problemáticos encontrados de ${bookmarks.length}`
-      },
-      en: {
-        title: 'Bookmarks Utilities',
-        message: `Check complete: ${deadBookmarks.length} problematic links found out of ${bookmarks.length}`
-      }
-    };
-    const notif = notifications[lang] || notifications.es;
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon48.png',
-      title: notif.title,
-      message: notif.message
-    });
+  const { language = 'es' } = await chrome.storage.local.get('language');
+  const notifications = {
+    es: {
+      title: 'Bookmarks Utilities',
+      message: `Verificación completa: ${deadBookmarks.length} enlaces problemáticos encontrados de ${bookmarks.length}`
+    },
+    en: {
+      title: 'Bookmarks Utilities',
+      message: `Check complete: ${deadBookmarks.length} problematic links found out of ${bookmarks.length}`
+    }
+  };
+  const notif = notifications[language] || notifications.es;
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: notif.title,
+    message: notif.message
   });
 
   // Broadcast completion to any open popup tabs
@@ -222,9 +220,9 @@ async function startPersistentHealthCheck(bookmarks) {
 /**
  * Cancel the ongoing persistent health check.
  */
-function cancelHealthCheck() {
-  healthCheckRunning = false;
-  chrome.storage.local.set({
+async function cancelHealthCheck() {
+  await chrome.storage.session.set({ healthCheckRunning: false });
+  await chrome.storage.local.set({
     [HEALTH_CHECK_STATUS_KEY]: { running: false, checked: 0, total: 0 }
   });
 }
@@ -255,167 +253,149 @@ async function removeBookmarkFromCache(id) {
 
 // Message handlers
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'getBookmarks') {
-    getCachedBookmarks().then(bookmarks => {
+  (async () => {
+    if (message.action === 'getBookmarks') {
+      const bookmarks = await getCachedBookmarks();
       sendResponse({ bookmarks });
-    });
-    return true; // Keep message channel open for async response
-  }
-  
-  if (message.action === 'refreshCache') {
-    cacheBookmarkTree().then(bookmarks => {
+    }
+
+    if (message.action === 'refreshCache') {
+      const bookmarks = await cacheBookmarkTree();
       sendResponse({ bookmarks });
-    });
-    return true;
-  }
-  
-  if (message.action === 'checkLinks') {
-    checkLinksHealth(message.urls).then(results => {
+    }
+
+    if (message.action === 'checkLinks') {
+      const results = await checkLinksHealth(message.urls);
       sendResponse({ results });
-    });
-    return true;
-  }
-  
-  if (message.action === 'updateBookmark') {
-    chrome.bookmarks.update(message.id, {
-      title: message.title,
-      url: message.url
-    }).then(() => {
-      updateBookmarkInCache(message.id, message.title, message.url);
-      sendResponse({ success: true });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
-    return true;
-  }
-  
-  if (message.action === 'removeBookmark') {
-    chrome.bookmarks.remove(message.id).then(() => {
-      removeBookmarkFromCache(message.id);
-      sendResponse({ success: true });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
-    return true;
-  }
+    }
 
-  if (message.action === 'checkSingleLink') {
-    checkLinkHealth(message.url).then(result => {
+    if (message.action === 'updateBookmark') {
+      try {
+        await chrome.bookmarks.update(message.id, {
+          title: message.title,
+          url: message.url
+        });
+        await updateBookmarkInCache(message.id, message.title, message.url);
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
+    if (message.action === 'removeBookmark') {
+      try {
+        await chrome.bookmarks.remove(message.id);
+        await removeBookmarkFromCache(message.id);
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
+    if (message.action === 'checkSingleLink') {
+      const result = await checkLinkHealth(message.url);
       sendResponse(result);
-    });
-    return true;
-  }
+    }
 
-  if (message.action === 'startHealthCheck') {
-    getCachedBookmarks().then(bookmarks => {
+    if (message.action === 'startHealthCheck') {
+      try {
+        const bookmarks = await getCachedBookmarks();
+        sendResponse({ success: true });
+        // Start persistent check in background (fire and forget)
+        startPersistentHealthCheck(bookmarks);
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
+    if (message.action === 'cancelHealthCheck') {
+      await cancelHealthCheck();
       sendResponse({ success: true });
-      // Start persistent check in background (fire and forget)
-      startPersistentHealthCheck(bookmarks);
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
-    return true;
-  }
+      return;
+    }
 
-  if (message.action === 'cancelHealthCheck') {
-    cancelHealthCheck();
-    sendResponse({ success: true });
-    return false;
-  }
-
-  if (message.action === 'getHealthCheckStatus') {
-    chrome.storage.local.get([HEALTH_CHECK_STATUS_KEY]).then(stored => {
+    if (message.action === 'getHealthCheckStatus') {
+      const stored = await chrome.storage.local.get([HEALTH_CHECK_STATUS_KEY]);
       sendResponse({ status: stored[HEALTH_CHECK_STATUS_KEY] || { running: false, checked: 0, total: 0 } });
-    });
-    return true;
-  }
+    }
 
-  if (message.action === 'getHealthCheckResults') {
-    chrome.storage.local.get([HEALTH_CHECK_KEY]).then(stored => {
+    if (message.action === 'getHealthCheckResults') {
+      const stored = await chrome.storage.local.get([HEALTH_CHECK_KEY]);
       sendResponse({ deadBookmarks: stored[HEALTH_CHECK_KEY] || [] });
-    });
-    return true;
-  }
+    }
 
-  if (message.action === 'removeDeadBookmarks') {
-    const ids = message.ids || [];
-    const promises = ids.map(id => chrome.bookmarks.remove(id));
-    Promise.all(promises).then(() => {
-      // Clear health check results and refresh cache
-      chrome.storage.local.remove([HEALTH_CHECK_KEY, HEALTH_CHECK_STATUS_KEY]);
-      return cacheBookmarkTree();
-    }).then(() => {
+    if (message.action === 'removeDeadBookmarks') {
+      try {
+        const ids = message.ids || [];
+        const promises = ids.map(id => chrome.bookmarks.remove(id));
+        await Promise.all(promises);
+        // Clear health check results and refresh cache
+        await chrome.storage.local.remove([HEALTH_CHECK_KEY, HEALTH_CHECK_STATUS_KEY]);
+        await cacheBookmarkTree();
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
+    if (message.action === 'removeBookmarksByIds') {
+      try {
+        const ids = message.ids || [];
+        const promises = ids.map(id => chrome.bookmarks.remove(id));
+        await Promise.all(promises);
+        await cacheBookmarkTree();
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
+    if (message.action === 'applyOpenMode') {
+      await applyOpenMode();
       sendResponse({ success: true });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
-    return true;
-  }
+      return;
+    }
 
-  if (message.action === 'removeBookmarksByIds') {
-    const ids = message.ids || [];
-    const promises = ids.map(id => chrome.bookmarks.remove(id));
-    Promise.all(promises).then(() => {
-      return cacheBookmarkTree();
-    }).then(() => {
-      sendResponse({ success: true });
-    }).catch(error => {
-      sendResponse({ success: false, error: error.message });
-    });
-    return true;
-  }
-
-  if (message.action === 'applyOpenMode') {
-    applyOpenMode();
-    sendResponse({ success: true });
-    return false;
-  }
-
-  if (message.action === 'getBookmarkStats') {
-    getCachedBookmarks().then(bookmarks => {
+    if (message.action === 'getBookmarkStats') {
+      const bookmarks = await getCachedBookmarks();
       const total = bookmarks.length;
       const now = Date.now();
       const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
       const last7Days = bookmarks.filter(bm => bm.dateAdded && bm.dateAdded >= sevenDaysAgo).length;
       sendResponse({ total, last7Days });
-    });
-    return true;
-  }
+    }
+  })();
+  return true;
 });
 
+// Apply open mode: toggle sidePanel behavior so clicking the icon opens sidePanel or popup
+async function applyOpenMode() {
+  const { openMode = 'popup' } = await chrome.storage.local.get('openMode');
+
+  if (openMode === 'sidePanel') {
+    // Make clicking the extension icon open the side panel instead of the popup
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  } else {
+    // Restore normal popup behavior on icon click
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+  }
+}
+
 // Initialize cache on service worker start
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   cacheBookmarkTree();
   // Set up side panel
   chrome.sidePanel.setOptions({
     enabled: true,
     path: 'popup.html'
   });
-  // Apply open mode preference on install
-  applyOpenMode();
+  // Apply open mode preference on install and on every SW restart
+  await applyOpenMode();
 });
 
-// Apply open mode: toggle default_popup vs side panel
-async function applyOpenMode() {
-  const stored = await new Promise((resolve) => {
-    chrome.storage.local.get(['openMode'], (result) => resolve(result));
-  });
-  const mode = stored.openMode || 'popup';
-
-  if (mode === 'sidePanel') {
-    // Remove default_popup so clicking the icon doesn't open the popup
-    chrome.action.setPopup({ popup: '' });
-  } else {
-    // Restore default popup
-    chrome.action.setPopup({ popup: 'popup.html' });
-  }
-}
-
-// Handle icon click to open side panel if preferred
-chrome.action.onClicked.addListener((tab) => {
-  chrome.storage.local.get(['openMode'], (result) => {
-    if (result.openMode === 'sidePanel') {
-      chrome.sidePanel.open({ windowId: tab.windowId });
-    }
-  });
-});
+// Apply open mode on every service worker startup to survive restarts.
+// setPanelBehavior makes Chrome open the side panel on icon click instead of the popup,
+// without needing to remove default_popup or use onClicked.
+(async () => {
+  await applyOpenMode();
+})();

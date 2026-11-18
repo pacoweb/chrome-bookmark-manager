@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bookmarks Utilities",
-  "version": "1.2.0",
+  "version": "1.2.4",
   "description": "Gestión superior de marcadores con búsqueda inteligente, agrupación por dominio y detección de enlaces muertos.",
   "permissions": [
     "bookmarks",

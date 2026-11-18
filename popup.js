@@ -1,5 +1,22 @@
 /* popup.js - Main Popup Logic */
 
+// Detect side panel mode and add class to body
+// Side panels are typically narrower (~200-400px) than popups (min 550px).
+// We use 500px as a safe threshold to distinguish between them.
+function updateSidePanelClass() {
+  if (window.outerWidth < 500) {
+    document.body.classList.add('side-panel');
+  } else {
+    document.body.classList.remove('side-panel');
+  }
+}
+
+// Run on load
+updateSidePanelClass();
+
+// Update on resize (in case user resizes the side panel)
+window.addEventListener('resize', updateSidePanelClass);
+
 // State
 let allBookmarks = [];
 let deadLinks = [];
@@ -112,7 +129,7 @@ function applyTranslations() {
 
 if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
-    window.open('settings.html', '_blank');
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
   });
 }
 
@@ -1036,18 +1053,15 @@ deleteDeadBtn.addEventListener('click', async () => {
   }));
   
   // Store backup in chrome.storage.local
-  await new Promise((resolve) => {
-    chrome.storage.local.get(['bookmark_backups'], (result) => {
-      const backups = result.bookmark_backups || [];
-      const backupEntry = {
-        date: new Date().toISOString(),
-        count: backupData.length,
-        bookmarks: backupData
-      };
-      backups.push(backupEntry);
-      chrome.storage.local.set({ bookmark_backups: backups }, resolve);
-    });
-  });
+  const backupsStored = await chrome.storage.local.get('bookmark_backups');
+  const backups = backupsStored.bookmark_backups || [];
+  const backupEntry = {
+    date: new Date().toISOString(),
+    count: backupData.length,
+    bookmarks: backupData
+  };
+  backups.push(backupEntry);
+  await chrome.storage.local.set({ bookmark_backups: backups });
   
   // Also download backup as JSON file
   const backupJson = JSON.stringify(backupData, null, 2);
@@ -1055,14 +1069,18 @@ deleteDeadBtn.addEventListener('click', async () => {
   const url = URL.createObjectURL(blob);
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -1);
   
-  await new Promise((resolve) => {
+  await new Promise((resolve, reject) => {
     chrome.downloads.download({
       url: url,
       filename: `bookmark-backup-${timestamp}.json`,
       saveAs: false
-    }, () => {
+    }, (downloadId) => {
       URL.revokeObjectURL(url);
-      resolve();
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(downloadId);
+      }
     });
   });
   
