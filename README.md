@@ -75,12 +75,20 @@ chrome-bookmark-manager/
 ├── popup.html               # Popup UI with three tabs
 ├── popup.css                # Styles for the popup
 ├── popup.js                 # Popup logic (search, groups, dead links, CRUD)
+├── settings.html            # Settings page
+├── settings.css             # Styles for the settings page
+├── settings.js              # Settings page logic (language, open mode, backups)
 ├── background.js            # Service worker (bookmark caching, health checks)
 ├── i18n.js                  # Internationalization (ES/EN translations)
 ├── icons/                   # Extension icons (16x16, 48x48, 128x128)
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
+├── docs/                    # GitHub Pages documentation
+│   ├── index.html           # Landing page with i18n (ES/EN)
+│   ├── index.js             # Translations and theme toggle logic
+│   ├── favicon.svg           # Page favicon
+│   └── screenshots/          # Screenshot images
 ├── .gitignore               # Git ignore rules
 └── README.md                # This file
 ```
@@ -90,9 +98,10 @@ chrome-bookmark-manager/
 | API | Purpose |
 |-----|---------|
 | `chrome.bookmarks` | Read, create, update, and delete bookmarks |
-| `chrome.storage.local` | Cache the bookmark tree and health check results |
+| `chrome.storage.local` | Cache the bookmark tree, health check results, and user settings |
 | `chrome.notifications` | Notify when background health checks complete |
 | `chrome.downloads` | Save backup of dead links before bulk deletion |
+| `chrome.sidePanel` | Open the extension UI in a side panel instead of a popup |
 
 ## 🌐 Adding a New Language
 
@@ -160,6 +169,12 @@ Contributions are welcome! Here's how you can help:
 - No build tools required — the extension runs directly from source
 
 ## 📋 Changelog
+
+### v1.2.4 (2026-11-18)
+- 🌐 Página web en **GitHub Pages** con traducción ES/EN y ciclo de temas (claro → oscuro → automático)
+- 🔖 Favicon en la página de documentación
+- ♿ Correcciones de contraste de accesibilidad
+- 🖼️ Traducción de textos y atributos `alt` de capturas de pantalla
 
 ### v1.2.0 (2026-11-16)
 - 🔄 Renombrado a **Bookmarks Utilities**
